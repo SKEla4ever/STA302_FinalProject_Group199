@@ -9,7 +9,8 @@ This repository contains the original dataset and planning notes for the STA302H
 - Verified all 21 downloads against the file sizes and MD5 checksums in the Zenodo API record.
 - Inspected the CSV headers, row counts, missing-value markers, and prices.
 - Reviewed both course PDFs and recorded the Part 1 requirements.
-- Research question, literature review, analytical subset, R Markdown analysis, and proposal are still to be completed. No regression has been fitted.
+- Selected the research direction: covariate-adjusted weekend-weekday offer-price differences by room type across ten sampled European cities. See the [working research plan](../research_plan.md).
+- Verified a proposed two-room-type analytical sample of 51,341 offers and the proposed model's design rank. Full literature/novelty review, R Markdown analysis, and proposal remain to be completed. No regression has been fitted.
 
 ## Repository layout
 
@@ -17,6 +18,7 @@ This repository contains the original dataset and planning notes for the STA302H
 data/raw/                         Original, unmodified CSV files
 docs/dataset_notes.md              Dataset inventory and modelling considerations
 docs/part1_requirements.md         Requirements and submission checklist
+../research_plan.md               Selected question and proposed analysis design (parent folder)
 references/course/                Copies of the two course PDFs
 references/upstream/               Original authors' supplementary Python script
 references/download_manifest.csv   Source URLs, byte sizes, and verified checksums
@@ -31,7 +33,7 @@ There are 51,707 offer records across 10 cities and two day types: 25,500 weekda
 
 The response candidate `realSum` is the total accommodation price in EUR for two people and two nights. The dataset provides both categorical and numerical predictor candidates. Dataset size and variable availability meet the basic assignment requirements, subject to the final analytical subset and a suitable, novel research question.
 
-Read [Part 1 requirements](docs/part1_requirements.md) and [dataset notes](docs/dataset_notes.md) before choosing the question or fitting a model.
+Read the [research plan](../research_plan.md), [Part 1 requirements](docs/part1_requirements.md), and [dataset notes](docs/dataset_notes.md) before fitting a model.
 
 ## Source and attribution
 
