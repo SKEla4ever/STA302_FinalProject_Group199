@@ -1,0 +1,739 @@
+---
+title: "Weekend-Weekday Offer-Price Differences by Room Type"
+subtitle: "STA302 Part 1: Preliminary multiple linear regression"
+date: "November 5, 2026"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    math_method: mathml
+    theme: readable
+    code_folding: hide
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = TRUE,
+                      fig.width = 11, fig.height = 7, dpi = 160)
+options(contrasts = c("contr.treatment", "contr.poly"), width = 110,
+        knitr.kable.NA = "")
+input_file <- knitr::current_input(dir = TRUE)
+start_dir <- if (length(input_file)) dirname(input_file) else getwd()
+candidates <- unique(normalizePath(c(start_dir, file.path(start_dir, ".."),
+  file.path(start_dir, "../.."), file.path(getwd(), "part1_regression")),
+  mustWork = FALSE))
+project_root <- candidates[vapply(candidates, function(p)
+  dir.exists(file.path(p, "data", "raw")), logical(1))][1]
+if (is.na(project_root)) stop("Cannot locate data/raw relative to this Rmd.")
+knitr::opts_knit$set(root.dir = project_root)
+out_dir <- file.path(project_root, "output", "part1")
+table_dir <- file.path(out_dir, "tables")
+figure_dir <- file.path(out_dir, "figures")
+clean_dir <- file.path(project_root, "data", "processed")
+for (p in c(out_dir, table_dir, figure_dir, clean_dir))
+  dir.create(p, recursive = TRUE, showWarnings = FALSE)
+export <- function(x, name) write.csv(x, file.path(table_dir, paste0(name, ".csv")),
+                                     row.names = FALSE, na = "")
+fmt <- function(x, d = 2) formatC(x, digits = d, format = "f", big.mark = ",")
+pfmt <- function(x) ifelse(x < 0.001, "< 0.001", formatC(x, digits = 3, format = "f"))
+show_table <- function(x, caption, digits = 2) {
+  cat('<div style="overflow-x:auto; margin-bottom:1.5em">')
+  print(knitr::kable(x, format = "html", digits = digits, caption = caption,
+                     row.names = FALSE))
+  cat('</div>')
+}
+save_figure <- function(name, draw, width = 11, height = 7) {
+  png(file.path(figure_dir, paste0(name, ".png")), width = width, height = height,
+      units = "in", res = 160, type = "cairo")
+  tryCatch(draw(), finally = dev.off())
+}
+col_private <- "#28798A"
+col_entire <- "#BB5733"
+```
+
+# Scope and research question
+
+Across the ten sampled European cities, does the covariate-adjusted difference
+between weekend and weekday offer prices differ between entire homes/apartments
+and private rooms? The response, `realSum`, is the total advertised EUR price for
+**two guests and two nights**, including the fees described by the original authors.
+It is not a nightly price, completed transaction, or revenue measure.
+
+This analysis implements the selected `research_plan.md`. It completes the
+preliminary-model component of Part 1: preparation, summaries, estimation,
+uncertainty, interpretation, and residual diagnostics. It is an analysis companion,
+not the word-limited proposal or complete submission package. Literature novelty,
+exact collection dates, course-specific ethics material, member contributions, and
+the teamwork agreement still require separate completion.
+
+Offers are unmatched across day types. Adjustment describes observed associations
+and does not identify a within-property change or a causal weekend effect.
+All model terms were specified before this fit; there is no significance screening.
+Assumption repairs are reserved for later work, as required for Part 1.
+
+# Data import, coding, and validation
+
+```{r import-and-validate}
+cities <- c("amsterdam", "athens", "barcelona", "berlin", "budapest", "lisbon",
+            "london", "paris", "rome", "vienna")
+expected_files <- as.vector(outer(cities, c("weekdays", "weekends"),
+                                  function(c, d) paste0(c, "_", d, ".csv")))
+files <- sort(list.files(file.path(project_root, "data", "raw"),
+                        pattern = "\\.csv$", full.names = TRUE))
+stopifnot(length(files) == 20L, setequal(basename(files), expected_files))
+expected_schema <- c("", "realSum", "room_type", "room_shared", "room_private",
+  "person_capacity", "host_is_superhost", "multi", "biz", "cleanliness_rating",
+  "guest_satisfaction_overall", "bedrooms", "dist", "metro_dist", "attr_index",
+  "attr_index_norm", "rest_index", "rest_index_norm", "lng", "lat")
+read_offer_file <- function(path) {
+  x <- read.csv(path, check.names = FALSE, stringsAsFactors = FALSE,
+                na.strings = c("", "NA", "NaN", "null", "None"))
+  stopifnot(identical(names(x), expected_schema))
+  names(x)[1] <- "source_row_index"
+  tag <- sub("\\.csv$", "", basename(path))
+  x$city <- sub("_.*$", "", tag)
+  x$day_type <- sub("^.*_", "", tag)
+  x$source_file <- basename(path)
+  x
+}
+raw <- do.call(rbind, lapply(files, read_offer_file))
+rownames(raw) <- NULL
+stopifnot(nrow(raw) == 51707L, !anyNA(raw$room_type),
+          setequal(raw$room_type, c("Private room", "Entire home/apt", "Shared room")))
+excluded <- raw[raw$room_type == "Shared room", ]
+dat <- raw[raw$room_type %in% c("Private room", "Entire home/apt"), ]
+rownames(dat) <- NULL
+dat$analysis_row <- seq_len(nrow(dat))
+as_boolean <- function(x) {
+  z <- tolower(trimws(as.character(x)))
+  if (anyNA(z) || !all(z %in% c("true", "false"))) stop("Invalid Boolean coding.")
+  z == "true"
+}
+superhost <- as_boolean(dat$host_is_superhost)
+stopifnot(all(dat$multi %in% 0:1), all(dat$biz %in% 0:1),
+          !anyNA(dat[c("multi", "biz")]), !any(dat$multi == 1 & dat$biz == 1))
+dat$host_portfolio <- factor(ifelse(dat$biz == 1, "5+ offers",
+  ifelse(dat$multi == 1, "2-4 offers", "Single offer")),
+  levels = c("Single offer", "2-4 offers", "5+ offers"))
+dat$host_is_superhost <- factor(ifelse(superhost, "Superhost", "Non-Superhost"),
+                                levels = c("Non-Superhost", "Superhost"))
+dat$city <- factor(dat$city, levels = cities)
+dat$day_type <- factor(dat$day_type, levels = c("weekdays", "weekends"))
+dat$room_type <- factor(dat$room_type, levels = c("Private room", "Entire home/apt"))
+predictors <- c("city", "day_type", "room_type", "person_capacity", "bedrooms",
+  "cleanliness_rating", "guest_satisfaction_overall", "host_is_superhost",
+  "dist", "metro_dist", "attr_index_norm", "host_portfolio")
+numeric_vars <- c("realSum", "person_capacity", "bedrooms", "cleanliness_rating",
+                  "guest_satisfaction_overall", "dist", "metro_dist", "attr_index_norm")
+factor_vars <- c("city", "day_type", "room_type", "host_is_superhost", "host_portfolio")
+model_vars <- c("realSum", predictors)
+stopifnot(nrow(dat) == 51341L, nrow(excluded) == 366L,
+          !anyNA(dat[model_vars]),
+          all(vapply(dat[numeric_vars], function(x) all(is.finite(x)), logical(1))),
+          all(dat$realSum > 0), all(dat$person_capacity >= 2),
+          all(dat$bedrooms >= 0), all(dat$bedrooms == floor(dat$bedrooms)),
+          all(dat$cleanliness_rating >= 0 & dat$cleanliness_rating <= 10),
+          all(dat$guest_satisfaction_overall >= 0 & dat$guest_satisfaction_overall <= 100),
+          all(dat$dist >= 0), all(dat$metro_dist >= 0),
+          all(dat$attr_index_norm >= 0 & dat$attr_index_norm <= 100),
+          all(is.finite(dat$lng)), all(is.finite(dat$lat)))
+stopifnot(identical(as_boolean(dat$room_private), dat$room_type == "Private room"),
+          !any(as_boolean(dat$room_shared)))
+cell_counts <- as.data.frame(xtabs(~ city + day_type + room_type, data = dat))
+names(cell_counts)[4] <- "n"
+stopifnot(nrow(cell_counts) == 40L, all(cell_counts$n > 0))
+audit <- data.frame(Stage = c("Imported offers", "Shared rooms excluded",
+                              "Retained offers", "Missing model-variable entries"),
+                    Count = c(nrow(raw), nrow(excluded), nrow(dat),
+                              sum(is.na(dat[model_vars]))))
+export(audit, "sample_audit")
+export(cell_counts, "cell_counts")
+write.csv(dat, file.path(clean_dir, "part1_offers.csv"), row.names = FALSE)
+source_manifest <- data.frame(source_file = basename(files),
+  bytes = file.info(files)$size, md5 = unname(tools::md5sum(files)))
+export(source_manifest, "source_manifest")
+```
+
+```{r sample-audit-table, results='asis'}
+show_table(audit, "Table 1. Analytical-sample flow. No observations are removed for missingness or price extremes.", 0)
+```
+
+All 20 original CSVs are read without modification. File names supply `city` and
+`day_type`; the exported row index is renamed `source_row_index` and retained for
+provenance only. Neither it nor `analysis_row` is a property or host identifier.
+The 366 shared-room offers are excluded to define the prespecified two-room-type
+target. The retained sample contains **`r fmt(nrow(dat), 0)` offers**; all 40
+city/day/room cells are populated (minimum cell size `r min(cell_counts$n)`).
+No model-variable values are missing or nonfinite. Range checks are basic coding
+checks, not proof of accuracy. Zero bedrooms are retained as the studio encoding.
+
+The mutually exclusive `multi` and `biz` indicators form `host_portfolio`:
+0/0 = Single offer, 1/0 = 2-4 offers, 0/1 = 5+ offers. This is an operation-scale
+proxy, not verified business status. Boolean case is normalized before coding.
+Redundant room indicators, raw/normalized duplicates of attraction indices, and
+the original portfolio flags are excluded from the model.
+
+```{r cell-table, results='asis'}
+cell_display <- data.frame(City = cities,
+  Private_weekday = as.integer(with(dat, table(city[day_type == "weekdays" & room_type == "Private room"]))),
+  Private_weekend = as.integer(with(dat, table(city[day_type == "weekends" & room_type == "Private room"]))),
+  Entire_weekday = as.integer(with(dat, table(city[day_type == "weekdays" & room_type == "Entire home/apt"]))),
+  Entire_weekend = as.integer(with(dat, table(city[day_type == "weekends" & room_type == "Entire home/apt"]))))
+names(cell_display) <- c("City", "Private: weekday", "Private: weekend", "Entire: weekday", "Entire: weekend")
+stopifnot(ncol(cell_display) == 5L, sum(as.matrix(cell_display[-1])) == nrow(dat))
+show_table(cell_display, "Table 2. Offers in every city/day/room cell; these counts do not establish unique properties.", 0)
+```
+
+# Numerical summaries and descriptive patterns
+
+```{r combined-summary, results='asis'}
+summary_rows <- lapply(numeric_vars, function(v) {
+  x <- dat[[v]]
+  qs <- quantile(x, c(0, .25, .5, .75, 1))
+  data.frame(Variable = v, Level = "Numeric", n = length(x), Percent = NA_real_,
+    Missing = sum(is.na(x)), Mean = mean(x), SD = sd(x), Min = qs[1],
+    Q1 = qs[2], Median = qs[3], Q3 = qs[4], Max = qs[5], row.names = NULL)
+})
+for (v in factor_vars) {
+  tab <- table(dat[[v]])
+  summary_rows[[length(summary_rows) + 1L]] <- data.frame(Variable = v,
+    Level = names(tab), n = as.integer(tab), Percent = 100 * as.integer(tab) / nrow(dat),
+    Missing = sum(is.na(dat[[v]])), Mean = NA_real_, SD = NA_real_, Min = NA_real_,
+    Q1 = NA_real_, Median = NA_real_, Q3 = NA_real_, Max = NA_real_)
+}
+summary_all <- do.call(rbind, summary_rows)
+export(summary_all, "summary_all_variables")
+show_table(summary_all, paste("Table 3. The response and all 12 main predictors in the retained sample.",
+  "Factor percentages use all 51,341 offers. Price is EUR for two guests/two nights; distances are km.",
+  "The maximum price and mean-median gap show a long upper tail; zero bedrooms are retained."))
+```
+
+The mean price is EUR `r fmt(mean(dat$realSum))`, the median is EUR
+`r fmt(median(dat$realSum))`, and the maximum is EUR `r fmt(max(dat$realSum))`.
+The long right tail motivates conditional residual and influence checks; a
+skewed marginal response alone does not establish a regression-assumption violation.
+`person_capacity` is maximum capacity, not the two guests used in the search.
+`attr_index_norm` measures relative within-city attraction accessibility; its units
+are not an absolute common attraction scale across cities.
+
+```{r descriptive-summaries}
+groups <- split(seq_len(nrow(dat)), interaction(dat$city, dat$day_type, dat$room_type, drop = TRUE))
+descriptive <- do.call(rbind, lapply(groups, function(ix) data.frame(
+  city = as.character(dat$city[ix[1]]), day_type = as.character(dat$day_type[ix[1]]),
+  room_type = as.character(dat$room_type[ix[1]]), n = length(ix),
+  mean_price = mean(dat$realSum[ix]), median_price = median(dat$realSum[ix]),
+  sd_price = sd(dat$realSum[ix]))))
+rownames(descriptive) <- NULL
+export(descriptive, "price_by_city_day_room")
+composition <- do.call(rbind, lapply(split(seq_len(nrow(dat)),
+  interaction(dat$day_type, dat$room_type, drop = TRUE)), function(ix) {
+    z <- dat[ix, ]
+    data.frame(day_type = as.character(z$day_type[1]), room_type = as.character(z$room_type[1]),
+      n = nrow(z), capacity_mean = mean(z$person_capacity), bedrooms_mean = mean(z$bedrooms),
+      cleanliness_mean = mean(z$cleanliness_rating), satisfaction_mean = mean(z$guest_satisfaction_overall),
+      dist_mean = mean(z$dist), metro_mean = mean(z$metro_dist), attraction_mean = mean(z$attr_index_norm),
+      superhost_pct = 100 * mean(z$host_is_superhost == "Superhost"),
+      single_pct = 100 * mean(z$host_portfolio == "Single offer"),
+      two_four_pct = 100 * mean(z$host_portfolio == "2-4 offers"),
+      five_plus_pct = 100 * mean(z$host_portfolio == "5+ offers"))
+}))
+export(composition, "composition_by_day_room")
+correlations <- cor(dat[numeric_vars[-1]])
+export(data.frame(variable = rownames(correlations), correlations, check.names = FALSE),
+       "numeric_predictor_correlations")
+```
+
+```{r composition-table, results='asis'}
+show_table(composition, "Table 4. Day/room sample composition: numerical means and host-category percentages. These pooled summaries can also reflect city composition.")
+```
+
+```{r descriptive-figure, fig.height=9, fig.cap='Figure 1. Observed mean two-night offer prices by city, day type, and room type. Lines join unmatched sample means, not repeated-property prices; these are unadjusted summaries.'}
+draw_descriptive <- function() {
+  par(mfrow = c(5, 2), mar = c(2.4, 4.0, 2.1, 0.7), oma = c(1, 0, 2, 0), cex = .82)
+  for (city_name in cities) {
+    z <- descriptive[descriptive$city == city_name, ]
+    plot(1:2, range(z$mean_price), type = "n", xlim = c(.8, 2.2),
+         xlab = "", ylab = "Mean price (EUR)", xaxt = "n", main = tools::toTitleCase(city_name))
+    axis(1, 1:2, c("Weekday", "Weekend"))
+    for (j in seq_along(levels(dat$room_type))) {
+      room <- levels(dat$room_type)[j]
+      zz <- z[z$room_type == room, ]
+      yy <- zz$mean_price[match(c("weekdays", "weekends"), zz$day_type)]
+      lines(1:2, yy, type = "b", pch = c(16, 17)[j], col = c(col_private, col_entire)[j], lwd = 2)
+    }
+  }
+  par(xpd = NA)
+  mtext("Private room (teal circles)    Entire home/apt (orange triangles)", outer = TRUE, side = 3, line = .4)
+}
+save_figure("01_observed_prices", draw_descriptive, height = 9)
+draw_descriptive()
+```
+
+# Prespecified regression and estimand
+
+Let \(W=1\) denote weekends and \(R=1\) denote Entire home/apt. The fitted mean is
+
+\[
+E(P\mid c,W,R,X)=\alpha_c+\tau_c W+\rho_c R+\delta WR+\beta^\top X.
+\]
+
+City-specific weekend baselines and city-specific room-type gaps are allowed.
+The central interaction \(\delta\) is constrained to be the same across cities;
+all remaining covariate slopes are also pooled. No three-way interaction is fitted.
+These are substantive modeling assumptions, not consequences of city adjustment.
+
+The private-room adjusted weekend-weekday difference in city \(c\) is \(\tau_c\);
+the entire-home difference is \(\tau_c+\delta\). Therefore,
+
+\[
+\delta=\Delta_{c,\mathrm{Entire}}-\Delta_{c,\mathrm{Private}},\qquad H_0:\delta=0.
+\]
+
+Linear regression directly estimates adjusted **conditional mean EUR differences**
+and their interaction while accounting for several observed characteristics. A
+pooled two-sample comparison would not provide the same adjustment or direct test.
+The full specification contains 12 distinct main predictors, categorical and numerical
+predictors, and the required categorical interactions. Factor dummy columns are not
+counted as distinct predictors.
+
+```{r fit-model, echo=TRUE}
+model_formula <- realSum ~
+  city * day_type + city * room_type + day_type * room_type +
+  person_capacity + bedrooms + cleanliness_rating +
+  guest_satisfaction_overall + host_is_superhost +
+  dist + metro_dist + attr_index_norm + host_portfolio
+
+# All formula variables are data columns; avoid saving the report's entire environment.
+environment(model_formula) <- baseenv()
+fit <- lm(model_formula, data = dat, na.action = na.fail, model = TRUE)
+X <- model.matrix(fit)
+stopifnot(nobs(fit) == nrow(dat), length(predictors) == 12L,
+          ncol(X) == 41L, fit$rank == 41L, all(is.finite(X)), !anyNA(coef(fit)))
+reduced <- update(fit, . ~ . - day_type:room_type)
+stopifnot(identical(rownames(model.frame(fit)), rownames(model.frame(reduced))),
+          nobs(reduced) == nobs(fit), reduced$rank == fit$rank - 1L)
+sm <- summary(fit)
+V <- vcov(fit)
+ci <- confint(fit)
+coefficient_table <- data.frame(term = rownames(sm$coefficients),
+  estimate = sm$coefficients[, 1], SE = sm$coefficients[, 2],
+  CI_low = ci[, 1], CI_high = ci[, 2], t = sm$coefficients[, 3],
+  p = sm$coefficients[, 4], row.names = NULL)
+core_term <- "day_typeweekends:room_typeEntire home/apt"
+stopifnot(core_term %in% names(coef(fit)))
+core <- coefficient_table[coefficient_table$term == core_term, ]
+partial <- anova(reduced, fit)
+stopifnot(isTRUE(all.equal(unname(partial$F[2]), unname(core$t^2), tolerance = 1e-7)))
+fit_statistics <- data.frame(n = nobs(fit), coefficients = fit$rank,
+  residual_df = df.residual(fit), R_squared = sm$r.squared,
+  adjusted_R_squared = sm$adj.r.squared, residual_SD_EUR = sm$sigma,
+  RMSE_in_sample_EUR = sqrt(mean(residuals(fit)^2)))
+export(coefficient_table, "coefficients")
+export(core, "primary_interaction")
+export(data.frame(comparison = c("Reduced: no day/room interaction", "Full: prespecified"), partial,
+                  row.names = NULL, check.names = FALSE), "partial_F_test")
+export(fit_statistics, "fit_statistics")
+saveRDS(fit, file.path(out_dir, "preliminary_model.rds"))
+```
+
+Reference levels are **Amsterdam**, **weekdays**, **Private room**,
+**Non-Superhost**, and **Single offer**. The intercept refers to these factor levels
+and all numerical predictors equal to zero; this is outside the observed capacity
+range, so the intercept has no useful standalone substantive interpretation.
+
+```{r fit-table, results='asis'}
+show_table(fit_statistics, "Table 5. Preliminary OLS fit. R-squared is descriptive in-sample fit, not validation of assumptions or predictive accuracy.", 3)
+core_display <- core[, c("term", "estimate", "SE", "CI_low", "CI_high", "t", "p")]
+core_display$p <- pfmt(core_display$p)
+show_table(core_display,
+           "Table 6. Primary interaction: entire-home minus private-room adjusted weekend-weekday difference (EUR). Classical OLS uncertainty is provisional.", 4)
+```
+
+The core contrast is **EUR `r fmt(core$estimate)`** (SE `r fmt(core$SE)`;
+conventional 95% CI [`r fmt(core$CI_low)`, `r fmt(core$CI_high)`];
+\(t\) = `r fmt(core$t)`, \(p\) `r if (core$p < .001) '< 0.001' else paste('=', pfmt(core$p))`).
+A positive estimate means a more positive weekend-weekday difference for entire
+homes than for private rooms. It does not imply that either room type has a
+positive weekend-weekday difference in every city.
+
+Under the conventional OLS test, there is insufficient evidence that the adjusted
+weekend-weekday difference varies by room type. This does **not** establish equal
+contrasts: the interval allows both negative and positive EUR differences.
+
+Removing **only** `day_type:room_type`, on the same observations and with all other
+terms retained, gives a one-degree-of-freedom partial \(F\) statistic of
+`r fmt(partial$F[2], 3)` (\(p\) `r if (partial$'Pr(>F)'[2] < .001) '< 0.001' else paste('=', pfmt(partial$'Pr(>F)'[2]))`).
+The code verifies \(F=t^2\). This tests the prespecified contrast, not model selection.
+The diagnostics below qualify the conventional uncertainty and any significance claim.
+
+## Adjusted city-specific contrasts
+
+```{r compute-contrasts}
+contrast_rows <- list()
+L_all <- list()
+for (cc in cities) for (rr in levels(dat$room_type)) {
+  nd <- dat[rep(1L, 2L), , drop = FALSE]
+  nd$city <- factor(rep(cc, 2), levels = levels(dat$city))
+  nd$room_type <- factor(rep(rr, 2), levels = levels(dat$room_type))
+  nd$day_type <- factor(c("weekdays", "weekends"), levels = levels(dat$day_type))
+  M <- model.matrix(delete.response(terms(fit)), data = nd,
+                    contrasts.arg = fit$contrasts, xlev = fit$xlevels)
+  L <- M[2, ] - M[1, ]
+  estimate <- drop(L %*% coef(fit))
+  se <- sqrt(drop(L %*% V %*% L))
+  crit <- qt(.975, df.residual(fit))
+  key <- paste(cc, rr, sep = "|")
+  L_all[[key]] <- L
+  contrast_rows[[key]] <- data.frame(city = cc, room_type = rr, estimate = estimate,
+    SE = se, CI_low = estimate - crit * se, CI_high = estimate + crit * se)
+}
+contrasts <- do.call(rbind, contrast_rows)
+rownames(contrasts) <- NULL
+for (cc in cities) {
+  gap <- L_all[[paste(cc, "Entire home/apt", sep = "|")]] -
+         L_all[[paste(cc, "Private room", sep = "|")]]
+  stopifnot(abs(drop(gap %*% coef(fit)) - core$estimate) < 1e-8)
+}
+export(contrasts, "adjusted_city_room_contrasts")
+```
+
+Each contrast is computed from model-matrix row differences with variance
+\(L\widehat{\operatorname{Var}}(\hat\beta)L^\top\), including all covariance terms.
+Other covariates are held equal and cancel algebraically; the arbitrary starting
+row does not set the target population. The 20 intervals are pointwise, not
+simultaneous. No cross-city aggregation weights are needed because each city is
+shown separately. The common gap between the two room-type contrasts is imposed
+by the model.
+
+```{r adjusted-contrast-figure, fig.height=7, fig.cap='Figure 2. Adjusted weekend minus weekday offer-price differences, with pointwise classical 95% CIs. The entire-minus-private gap is pooled across cities; possible heteroskedasticity and dependence make uncertainty provisional.'}
+draw_contrasts <- function() {
+  par(mar = c(4.5, 7, 2.2, 1))
+  plot(NA, xlim = range(c(0, contrasts$CI_low, contrasts$CI_high)), ylim = c(.4, 10.6),
+    yaxt = "n", ylab = "", xlab = "Adjusted weekend - weekday price (EUR; two guests, two nights)",
+    main = "Adjusted price contrasts by city and room type")
+  abline(v = 0, col = "gray60", lty = 2)
+  axis(2, 10:1, tools::toTitleCase(cities), las = 1)
+  for (j in seq_along(levels(dat$room_type))) {
+    zz <- contrasts[contrasts$room_type == levels(dat$room_type)[j], ]
+    zz <- zz[match(cities, zz$city), ]
+    y <- 10:1 + c(-.12, .12)[j]
+    segments(zz$CI_low, y, zz$CI_high, y, col = c(col_private, col_entire)[j], lwd = 2)
+    points(zz$estimate, y, pch = c(16, 17)[j], col = c(col_private, col_entire)[j], cex = 1.1)
+  }
+  legend("topright", levels(dat$room_type), pch = c(16, 17),
+         col = c(col_private, col_entire), bty = "n", bg = "white", cex = .85)
+}
+save_figure("02_adjusted_contrasts", draw_contrasts)
+draw_contrasts()
+```
+
+```{r contrast-table, results='asis'}
+show_table(contrasts, "Table 7. Adjusted city/room contrasts in EUR; full-covariance, pointwise classical intervals.")
+```
+
+## Full coefficient table
+
+Numerical coefficients are conditional EUR differences per unit increase,
+holding the other variables fixed. Factor coefficients compare the labelled level
+with its reference; main effects involving interactions are evaluated at the
+interacting factors' reference levels. City/day and city/room interactions modify
+the Amsterdam contrast. A single main-effect coefficient does not summarize a
+factor's relationship across all cities and day types.
+
+```{r full-coefficients, results='asis'}
+readable_coefs <- coefficient_table
+readable_coefs$p <- pfmt(readable_coefs$p)
+show_table(readable_coefs, "Table 8. All 41 fitted coefficients with conventional OLS SEs and 95% CIs. Reference levels are given above; no coefficients were screened out.")
+```
+
+# Residual analysis and model conditions
+
+```{r diagnostic-statistics}
+fv <- fitted(fit)
+res <- residuals(fit)
+lev <- hatvalues(fit)
+rstd <- rstandard(fit)
+rst <- rstudent(fit)
+cook <- cooks.distance(fit)
+n <- nrow(dat)
+p <- fit$rank
+bins <- cut(rank(fv, ties.method = "first"), breaks = seq(0, n, length.out = 11),
+            include.lowest = TRUE, labels = FALSE)
+bin_summary <- do.call(rbind, lapply(split(seq_len(n), bins), function(ix) data.frame(
+  fitted_mean = mean(fv[ix]), residual_mean = mean(res[ix]),
+  residual_SD = sd(res[ix]), n = length(ix))))
+export(bin_summary, "residuals_by_fitted_decile")
+diagnostics <- data.frame(metric = c("Minimum fitted price", "Maximum fitted price",
+  "Negative fitted prices", "Minimum residual", "Maximum residual", "Maximum absolute studentized residual",
+  "Absolute externally studentized residual > 3", "Maximum leverage", "Leverage > 2p/n",
+  "Maximum Cook distance", "Cook distance > 4/n", "Cook distance > 1",
+  "Largest/smallest fitted-decile residual SD"),
+  value = c(min(fv), max(fv), sum(fv < 0), min(res), max(res), max(abs(rst)),
+    sum(abs(rst) > 3), max(lev), sum(lev > 2*p/n), max(cook), sum(cook > 4/n), sum(cook > 1),
+    max(bin_summary$residual_SD) / min(bin_summary$residual_SD)))
+export(diagnostics, "diagnostic_statistics")
+top_ix <- order(cook, decreasing = TRUE)[1:10]
+influence_table <- data.frame(dat[top_ix, c("analysis_row", "source_file", "source_row_index",
+  "city", "day_type", "room_type", "realSum")], fitted = fv[top_ix], residual = res[top_ix],
+  studentized_residual = rst[top_ix], leverage = lev[top_ix], cooks_distance = cook[top_ix])
+export(influence_table, "top_influence")
+binned_line <- function(x, y, groups = 25) {
+  b <- cut(rank(x, ties.method = "first"), breaks = seq(0, length(x), length.out = groups + 1),
+           include.lowest = TRUE, labels = FALSE)
+  lines(as.numeric(tapply(x, b, mean)), as.numeric(tapply(y, b, mean)), col = "#BA432A", lwd = 2)
+}
+```
+
+The following grid evaluates the conditional mean, variance, normal-error
+approximation, residual outliers, leverage, and influence. All observations are
+used in fitting and in the full-range diagnostic panels. The explicitly labelled
+central-view panel zooms the display to reveal patterns hidden by extreme values;
+it does not delete or refit observations.
+
+```{r diagnostic-grid, fig.width=12, fig.height=8.8, fig.cap='Figure 3. Preliminary OLS diagnostics (2 x 3 grid). Orange lines join mean residuals or mean scale-location values in equal-count fitted-value bins. The central view only zooms the display. Dashed leverage and Cook thresholds are screening rules, not deletion rules.'}
+draw_diagnostics <- function() {
+  par(mfrow = c(2, 3), mar = c(4.1, 4.2, 2.7, .8), oma = c(0, 0, .5, 0), cex = .85)
+  point_col <- adjustcolor("#2C6E83", alpha.f = .18)
+  plot(fv, res, pch = 16, cex = .28, col = point_col,
+       xlab = "Fitted price (EUR)", ylab = "Residual (EUR)", main = "Residuals vs fitted: all offers")
+  abline(h = 0, lty = 2, col = "gray45"); binned_line(fv, res)
+  plot(fv, res, pch = 16, cex = .28, col = point_col,
+       xlim = quantile(fv, c(.005, .995)), ylim = quantile(res, c(.005, .995)),
+       xlab = "Fitted price (EUR)", ylab = "Residual (EUR)", main = "Central 99% axis ranges (zoom)")
+  abline(h = 0, lty = 2, col = "gray45"); binned_line(fv, res)
+  qqnorm(rstd, pch = 16, cex = .28, col = point_col,
+         main = "Normal Q-Q: all offers", ylab = "Standardized residual")
+  qqline(rstd, col = "#BA432A", lwd = 2)
+  plot(fv, sqrt(abs(rstd)), pch = 16, cex = .28, col = point_col,
+       xlab = "Fitted price (EUR)", ylab = "sqrt(|standardized residual|)", main = "Scale-location")
+  binned_line(fv, sqrt(abs(rstd)))
+  plot(lev, rstd, pch = 16, cex = .3, col = point_col,
+       xlab = "Leverage", ylab = "Standardized residual", main = "Residuals vs leverage")
+  abline(h = c(-3, 0, 3), v = 2*p/n, lty = 2, col = "gray55")
+  text(lev[top_ix[1]], rstd[top_ix[1]], labels = top_ix[1], pos = 2, cex = .65)
+  plot(seq_len(n), cook, type = "h", col = "#2C6E83",
+       xlab = "Analytical row (file order; not time)", ylab = "Cook distance", main = "Influence: all offers")
+  abline(h = 4/n, col = "#BA432A", lty = 2)
+  text(top_ix[1], cook[top_ix[1]], labels = top_ix[1], pos = 2, cex = .65)
+}
+save_figure("03_residual_diagnostics", draw_diagnostics, width = 12, height = 8.8)
+draw_diagnostics()
+```
+
+```{r diagnostic-summary-table, results='asis'}
+show_table(diagnostics, "Table 9. Diagnostic screening summaries; thresholds flag observations for investigation, not automatic deletion.", 3)
+show_table(influence_table, "Table 10. Ten offers with largest Cook distances, identified by source file and source row. These are provenance labels, not listing identifiers.", 3)
+```
+
+## Supplementary mean-function and spatial checks
+
+```{r covariate-residual-figure, fig.width=12, fig.height=9, fig.cap='Figure 4. Residual means across empirical quantile bins of each numerical predictor. Values at identical predictor levels are kept together. Systematic departures from zero suggest unmodeled mean structure; these descriptive bins do not isolate a new partial effect.'}
+draw_covariate_residuals <- function() {
+  par(mfrow = c(3, 3), mar = c(4, 4, 2, .7), cex = .78)
+  for (v in numeric_vars[-1]) {
+    x <- dat[[v]]
+    breaks <- unique(quantile(x, seq(0, 1, length.out = 13)))
+    b <- cut(x, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+    xx <- as.numeric(tapply(x, b, mean))
+    yy <- as.numeric(tapply(res, b, mean))
+    plot(xx, yy, type = "b", pch = 16, col = "#28798A", xlab = v,
+         ylab = "Mean residual (EUR)", main = "Binned residual means")
+    abline(h = 0, lty = 2, col = "gray50")
+  }
+  plot.new()
+  text(.5, .55, "All offers retained.\nQuantile bins are diagnostic displays.\nNo functional-form changes fitted.", cex = 1)
+  plot.new()
+}
+save_figure("04_covariate_residuals", draw_covariate_residuals, width = 12, height = 9)
+draw_covariate_residuals()
+```
+
+```{r spatial-grid}
+# Approximate local-km coordinates only for aggregate diagnostic displays.
+# This does not match properties or estimate a spatial regression.
+spatial_cells <- do.call(rbind, lapply(cities, function(cc) {
+  ix <- which(dat$city == cc)
+  xx <- (dat$lng[ix] - mean(dat$lng[ix])) * 111.32 * cos(mean(dat$lat[ix]) * pi/180)
+  yy <- (dat$lat[ix] - mean(dat$lat[ix])) * 111.32
+  g <- split(seq_along(ix), paste(floor(xx), floor(yy), sep = "|"))
+  do.call(rbind, lapply(g, function(j) data.frame(city = cc,
+    x_km = floor(xx[j[1]]) + .5, y_km = floor(yy[j[1]]) + .5,
+    n = length(j), mean_residual = mean(res[ix[j]]))))
+}))
+spatial_show <- spatial_cells[spatial_cells$n >= 5, ]
+spatial_coverage <- do.call(rbind, lapply(cities, function(cc) {
+  z <- spatial_show[spatial_show$city == cc, ]
+  data.frame(city = cc, displayed_cells = nrow(z), displayed_offers = sum(z$n),
+    total_offers = sum(dat$city == cc), mean_residual_min = min(z$mean_residual),
+    mean_residual_max = max(z$mean_residual))
+}))
+export(spatial_cells, "spatial_residual_cells")
+export(spatial_coverage, "spatial_diagnostic_coverage")
+```
+
+```{r spatial-residual-figure, fig.width=11, fig.height=12, fig.cap='Figure 5. Descriptive residual maps: mean residual in approximate 1 km cells with at least five offers. Colors saturate at the pooled 95th percentile of absolute displayed cell means; values are not truncated in the exported table. Local coordinates are city-centered. Spatial patterns may reflect omitted location structure; this is not a formal independence test.'}
+draw_spatial <- function() {
+  par(mfrow = c(5, 2), mar = c(2.3, 3, 2.1, .7), oma = c(2, 2, 2.5, 0),
+      mgp = c(2, .6, 0), cex = .8)
+  limit <- unname(quantile(abs(spatial_show$mean_residual), .95))
+  palette <- colorRampPalette(c("#256B92", "#F6F3E9", "#BC442C"))(101)
+  for (cc in cities) {
+    z <- spatial_show[spatial_show$city == cc, ]
+    color_id <- pmax(1, pmin(101, round(51 + 50*z$mean_residual/limit)))
+    plot(z$x_km, z$y_km, type = "n", asp = 1,
+         xlim = range(z$x_km) + c(-.5, .5), ylim = range(z$y_km) + c(-.5, .5),
+         xlab = "", ylab = "",
+         main = tools::toTitleCase(cc))
+    rect(z$x_km-.48, z$y_km-.48, z$x_km+.48, z$y_km+.48,
+         col = palette[color_id], border = NA)
+  }
+  mtext(paste0("Cell mean residual: blue <= -", fmt(limit, 0),
+    " EUR   |   white = 0   |   red >= ", fmt(limit, 0), " EUR"),
+    outer = TRUE, side = 3, line = .6, cex = .85)
+  mtext("East-west offset (km)", outer = TRUE, side = 1, line = .6, cex = .85)
+  mtext("North-south offset (km)", outer = TRUE, side = 2, line = .6, cex = .85)
+}
+save_figure("05_spatial_residuals", draw_spatial, width = 11, height = 12)
+draw_spatial()
+```
+
+## Conclusions about assumptions
+
+1. **Conditional mean / linearity:** Use Figure 3's central view and Figure 4's
+   residual means to judge systematic departures from zero. Fitted-decile mean
+   residuals range from EUR `r fmt(min(bin_summary$residual_mean))` to EUR
+   `r fmt(max(bin_summary$residual_mean))`, indicating that the pooled linear mean
+   structure is incomplete. Residual orthogonality to included columns does not
+   establish that the conditional mean is correctly specified.
+2. **Constant error variance:** The scale-location pattern and unequal residual
+   dispersion raise concerns about homoskedasticity. The largest/smallest
+   fitted-decile residual-SD ratio is `r fmt(max(bin_summary$residual_SD) / min(bin_summary$residual_SD))`.
+   This is descriptive evidence, not a formal variance-test p-value.
+3. **Normal errors / tails:** The full-range Q-Q plot has a pronounced upper-tail
+   departure. The largest absolute externally studentized residual is
+   `r fmt(max(abs(rst)))`; `r sum(abs(rst) > 3)` observations exceed 3 in absolute
+   value. The normal-error approximation is poor, and influential tails also
+   complicate large-sample inference. No Shapiro-Wilk test is used.
+4. **Outliers, leverage, and influence:** There are `r sum(lev > 2*p/n)` observations
+   above the leverage screen \(2p/n\), `r sum(cook > 4/n)` above the Cook screen
+   \(4/n\), and `r sum(cook > 1)` above Cook distance 1. Maximum Cook distance is
+   `r fmt(max(cook), 3)`. These are screening measures, not evidence that an offer
+   is erroneous. Table 10 makes the most influential offers traceable; all are retained.
+5. **Independence:** Not established and substantively doubtful. Figure 5 checks
+   residual geography descriptively; localized patterns can reflect omitted
+   location effects as well as dependence. Repeated properties or hosts may occur
+   within/across samples, but no valid identifiers are supplied. File order is not
+   time and cannot support a serial-independence test. City effects do not remove
+   within-city spatial or within-host dependence. No formal independence conclusion
+   follows from the residual grid.
+6. **Estimability / collinearity:** The 41-column design has full rank 41, so no
+   exact linear aliasing occurs. Correlations of numerical predictors are exported
+   for inspection; full rank does not establish weak collinearity. Coefficients
+   remain conditional on correlated controls and the chosen coding.
+
+Consequently, the model supplies a preliminary adjusted point estimate, but its
+classical SEs, CIs, and p-values are **provisional**. A large sample and moderate
+R-squared do not resolve heteroskedasticity, dependence, mean misspecification, or
+unobserved sample-composition differences. Negative fitted prices, if present
+(`r sum(fv < 0)` here), are additional evidence of limitations of an additive raw-price
+model, not a reason to delete offers.
+
+# Context, interpretation, and next-stage plan
+
+The controls represent the accommodation-size, quality, location, and host-scale
+dimensions motivated in the research plan. Room-type heterogeneity provides a
+reason to test the targeted interaction directly. However, seasonal heterogeneity
+in Voltes-Dorta and Sanchez-Medina (2020) does not establish a weekend effect;
+Abrate et al.'s (2022) longitudinal pricing-variability findings do not predict the
+sign of a portfolio coefficient in this price-level model. The original Gyodi and
+Nawaro (2021) study's spatial emphasis makes the residual-location concerns salient.
+This is a methodological comparison using the supplied reading notes, not a
+completed full-paper synthesis or verified novelty claim.
+
+The positive bedroom coefficient (EUR `r fmt(coef(fit)['bedrooms'])` per bedroom,
+conditional on capacity and other controls) is consistent with the size-related
+pricing motivation. In contrast, the city-center-distance coefficient is small
+(EUR `r fmt(coef(fit)['dist'])` per km) and its conventional CI includes zero,
+while attraction accessibility has a positive coefficient. This should prompt
+examination of correlated location measures and functional form; it does not
+establish that location is unimportant. The 5+ portfolio coefficient is positive
+(EUR `r fmt(coef(fit)['host_portfolio5+ offers'])` versus single offers), but it
+describes price levels rather than the pricing variability studied by Abrate et al.
+
+The estimated interaction concerns differences between **available-offer samples**
+in the sampled cities and collection periods. It is neither a common percentage
+premium nor evidence of within-property dynamic pricing. Observed covariates
+cannot remove unmeasured availability, date/event, or quality differences. The
+original collection dates and protocol must be checked before generalizing.
+
+For the later stage, connect each proposed change to the diagnostics:
+
+- Investigate source records for influential offers; do not remove them merely
+  because they are expensive or influential. Assess sensitivity only with a
+  documented substantive rationale.
+- Assess nonlinear size, rating, and accessibility terms and whether the pooled
+  slopes/common interaction are substantively defensible. A city-specific
+  three-way interaction changes the common-contrast assumption and should be
+  evaluated deliberately, with a clearly defined reporting target.
+- Consider a log-price response or an alternative variance model if supported by
+  conditional diagnostics. A log response changes the estimand and requires
+  revised interpretation; a more symmetric marginal histogram is insufficient.
+- Plan inference addressing heteroskedasticity and plausible spatial/repeated-host
+  dependence. Heteroskedasticity-robust SEs alone do not solve dependence, and
+  grouping by ten cities requires care. Valid identifiers would be needed for
+  property/host matching or those cluster definitions.
+- Reassess diagnostics after any later change and agree member responsibilities
+  and dates using the actual later course deadlines. No team assignment or date
+  is invented here.
+
+No transformation, outlier exclusion, robust-SE replacement, weighting, spatial
+regression, or significance-driven term removal has been applied to this Part 1 fit.
+
+# Reproducibility and outputs
+
+Run `Rscript part1_regression/analysis/render_part1.R` from the repository root
+(or `Rscript analysis/render_part1.R` from `part1_regression`), or knit this file
+in RStudio. In this VS Code workspace, use **Tasks: Run Build Task** and select
+**Render Part 1 R Markdown** to use the configured local R environment.
+Required packages are `rmarkdown` and `knitr`, plus Pandoc (included
+with RStudio). This report is self-contained HTML; raw data remain unchanged.
+All outputs are regenerated by the Rmd, including:
+
+- `data/processed/part1_offers.csv`: cleaned analytical sample with provenance.
+- `output/part1/preliminary_model.rds`: fitted R `lm` object.
+- `output/part1/tables/`: complete summaries, cell counts, coefficients, contrasts,
+  partial F-test, diagnostics, influential offers, and source-file checksums.
+- `output/part1/figures/`: high-resolution PNGs for the report and proposal.
+- `output/part1/session_info.txt`: R and package versions.
+
+These figures and tables support proposal preparation; the proposal still needs
+its own selected, formatted displays, captions within section word limits, and
+the remaining required sections. R code and raw console output should not be
+copied into that written proposal.
+
+```{r save-session, include=FALSE}
+writeLines(capture.output(sessionInfo()), file.path(out_dir, "session_info.txt"))
+stopifnot(identical(unname(tools::md5sum(files)), source_manifest$md5))
+```
+
+# References
+
+Gyódi, K., & Nawaro, Ł. (2021). Determinants of Airbnb prices in European cities:
+A spatial econometrics approach. *Tourism Management, 86*, 104319.
+<https://doi.org/10.1016/j.tourman.2021.104319>
+
+Gyódi, K., & Nawaro, Ł. (2021). *Determinants of Airbnb prices in European cities:
+A spatial econometrics approach (Supplementary Material)* [Data set]. Zenodo.
+<https://doi.org/10.5281/zenodo.4446043>. CC-BY-4.0. Original source names and
+attribution are preserved in the repository metadata.
+
+Voltes-Dorta, A., & Sánchez-Medina, A. (2020). Drivers of Airbnb prices according to
+property/room type, season and location: A regression approach. *Journal of
+Hospitality and Tourism Management, 45*, 266-275.
+<https://doi.org/10.1016/j.jhtm.2020.08.015>
+
+Abrate, G., Sainaghi, R., & Mauri, A. G. (2022). Dynamic pricing in Airbnb:
+Individual versus professional hosts. *Journal of Business Research, 141*, 191-199.
+<https://doi.org/10.1016/j.jbusres.2021.12.012>

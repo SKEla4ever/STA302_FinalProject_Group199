@@ -1,0 +1,14 @@
+"metric","value"
+"Minimum fitted price",-125.647696352573
+"Maximum fitted price",1529.39145525222
+"Negative fitted prices",195
+"Minimum residual",-752.05992417456
+"Maximum residual",18442.4536864366
+"Maximum absolute studentized residual",68.136924691427
+"Absolute externally studentized residual > 3",261
+"Maximum leverage",0.00760657811282315
+"Leverage > 2p/n",4520
+"Maximum Cook distance",0.113177385476627
+"Cook distance > 4/n",615
+"Cook distance > 1",0
+"Largest/smallest fitted-decile residual SD",6.50031287299066

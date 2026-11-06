@@ -1,0 +1,3 @@
+"comparison","Res.Df","RSS","Df","Sum of Sq","F","Pr(>F)"
+"Reduced: no day/room interaction",51301,4100642451.2149,,,,
+"Full: prespecified",51300,4100605655.44854,1,36795.7663660049,0.460327808422139,0.497473871788084
