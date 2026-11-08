@@ -599,6 +599,27 @@ save_figure("05_spatial_residuals", draw_spatial, width = 11, height = 12)
 draw_spatial()
 ```
 
+## Course diagnostic panels and model conditions
+
+```{r course-diagnostics}
+source(file.path(project_root, "analysis", "course_diagnostics.R"), local = TRUE)
+course_diagnostics <- render_course_diagnostics(fit, figure_dir)
+```
+
+```{r course-diagnostic-plots, out.width='100%', fig.cap=c('Figure 6. Residuals versus fitted values, normal Q-Q and scale-location. The first panel zooms both axes.', 'Figure 7. Standardized residual boxplots on a common vertical scale. Outlying points are hidden to show group spread.', 'Figure 8. Numerical predictor pairs. Lower panels show scatterplots and smoothers. Upper panels show Pearson correlations.')}
+knitr::include_graphics(course_diagnostics$figures, rel_path = FALSE)
+```
+
+```{r course-diagnostic-tables, results='asis'}
+show_table(data.frame(metric = names(course_diagnostics$fit_statistics),
+                      value = unname(course_diagnostics$fit_statistics)),
+           "Table 11. In-sample fit and classical overall F-test summaries. The p-value is on the log scale.", 4)
+show_table(data.frame(column = names(course_diagnostics$vif), VIF = unname(course_diagnostics$vif)),
+           "Table 12. Ordinary VIFs for reference-coded design-matrix columns.")
+show_table(course_diagnostics$group_spread,
+           "Table 13. Standardized residual spread by city, room type and day by room type.", 3)
+```
+
 ## Conclusions about assumptions
 
 1. **Conditional mean / linearity:** Use Figure 3's central view and Figure 4's
