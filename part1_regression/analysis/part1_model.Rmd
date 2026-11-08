@@ -620,6 +620,41 @@ show_table(course_diagnostics$group_spread,
            "Table 13. Standardized residual spread by city, room type and day by room type.", 3)
 ```
 
+## Conditional mean response check
+
+This response-versus-fitted plot complements the predictor-pairs plot when
+assessing the course's additional conditions for interpreting MLR residual plots.
+An overall increasing binned trend is compatible with a response mean depending on
+one fitted index, but does not establish that this index captures all predictor
+information. Curved predictor relationships can complicate diagnostic attribution.
+
+```{r conditional-response-figure, fig.width=6, fig.height=4.2, fig.cap='Figure 9. Response versus fitted price. Both axes show central 99% ranges; the orange line joins mean responses in 25 equal-count fitted-value bins. All offers remain in the model.'}
+draw_conditional_response <- function() {
+  fitted_price <- fitted(fit)
+  response_price <- model.response(model.frame(fit))
+  par(mar = c(4.1, 4.3, 2.5, .8), mgp = c(2.7, .7, 0), cex = .9)
+  plot(fitted_price, response_price, pch = 16, cex = .27,
+       col = adjustcolor("#256B82", alpha.f = .18),
+       xlim = quantile(fitted_price, c(.005, .995)),
+       ylim = quantile(response_price, c(.005, .995)),
+       xaxs = "i", yaxs = "i", axes = FALSE,
+       xlab = "Fitted price (EUR)", ylab = "Offer price (EUR)",
+       main = "Response vs fitted (zoom)")
+  axis(1, at = c(200, 400, 600, 800))
+  axis(2, at = c(500, 1000, 1500, 2000))
+  box()
+  bin <- cut(rank(fitted_price, ties.method = "first"),
+             breaks = seq(0, length(fitted_price), length.out = 26),
+             include.lowest = TRUE, labels = FALSE)
+  lines(as.numeric(tapply(fitted_price, bin, mean)),
+        as.numeric(tapply(response_price, bin, mean)),
+        col = "#B74226", lwd = 2)
+}
+save_figure("09_conditional_mean_response", draw_conditional_response,
+            width = 6, height = 4.2)
+draw_conditional_response()
+```
+
 ## Conclusions about assumptions
 
 1. **Conditional mean / linearity:** Use Figure 3's central view and Figure 4's

@@ -33,10 +33,12 @@ Table 2. All coefficients (SEs), EUR. References: Amsterdam, weekdays, private r
 Bedroom and attraction slopes agree directionally with Gyódi and Nawaro (2021a).
 
 - **Linearity:** Residual curvature suggests mean misspecification.
-- **Variance:** Rising scale-location and wider entire-home residual boxes suggest unequal variance.
+- **Variance:** Rising scale-location suggests unequal variance.
 - **Error normality:** Q-Q upper tails depart from the reference line.
 - **Independence:** Unverified; nearby or repeated listings/hosts may be dependent.
-- **Multicollinearity:** Full rank; correlated ratings (Figure 2) and indicator VIFs >5 warrant caution.
+- **Conditional mean response:** Figure 3 shows an increasing response trend; dependence on one linear combination remains unverified.
+- **Conditional mean predictors:** Curved attraction–distance trends (Figure 2) suggest nonlinearity, limiting residual interpretation.
+- **Multicollinearity:** Full rank excludes exact collinearity; some indicator VIFs >5 warrant caution.
 
 Inference remains provisional; no repairs applied.
 
@@ -48,6 +50,6 @@ Figure 1. Residual diagnostics; left axes zoom central 99%.
 
 Figure 2. Predictor pairs: smoothers below, Pearson correlations above.
 
-![Residual group boxplots](../part1_regression/output/part1/figures/07_residual_boxplots.png)
+![Response versus fitted prices](../part1_regression/output/part1/figures/09_conditional_mean_response.png)
 
-Figure 3. Residual boxplots; outlier markers omitted.
+Figure 3. Response versus fitted: central 99% ranges; line joins bin means.
