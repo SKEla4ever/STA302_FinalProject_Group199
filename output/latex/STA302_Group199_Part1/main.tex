@@ -1,0 +1,59 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage[section]{placeins}
+\usepackage[authoryear,round]{natbib}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+
+\hypersetup{
+  pdftitle={Weekend and Weekday Airbnb Prices Across Ten European Cities},
+  pdfauthor={STA302 Group 199}
+}
+\newcommand{\var}[1]{\texttt{\detokenize{#1}}}
+%TC:macro \var [text]
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5\baselineskip}
+\setlength{\emergencystretch}{2em}
+\captionsetup{font=small,labelfont=bf,skip=6pt}
+\renewcommand{\arraystretch}{1.12}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.65}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+
+\begin{document}
+\begin{center}
+  {\Large\bfseries Weekend and Weekday Airbnb Prices\\[3pt]
+   Across Ten European Cities\par}
+  \vspace{5pt}
+  STA302H1 Fall 2026 \quad Group 199\\[2pt]
+  Part 1 Research Proposal
+\end{center}
+\vspace{4pt}
+
+\input{sections/00_contributions}
+\input{sections/01_introduction}
+\clearpage
+\input{sections/02_data_description}
+\input{sections/03_ethics}
+\clearpage
+\input{sections/04_preliminary_results}
+\FloatBarrier%
+\input{sections/05_plan}
+\FloatBarrier%
+\clearpage
+\input{bibliography}
+\end{document}

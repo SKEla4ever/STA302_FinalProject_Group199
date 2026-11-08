@@ -1,0 +1,34 @@
+\section{Data description}
+
+\citeauthor{gyodi2021}'s (\citeyear{gyodi2021}) open \href{https://doi.org/10.5281/zenodo.4446043}{Zenodo dataset} was collected to study Airbnb price determinants, especially location and spatial dependence. Selenium searches captured offers for two guests and two nights, four to six weeks before selected 2019 stays. Separate samples covered Tuesday--Thursday and Friday--Sunday.
+
+Excluding 366 shared-room offers from 51,707 records leaves 51,341 observations. The response, \var{realSum}, is advertised accommodation price, including reservation and cleaning fees. Its continuity supports modelling mean EUR differences, although spatial dependence and possible repeated properties/hosts challenge independence; identifiers are unavailable. Mean price exceeds the \texteuro{}212.23 median, indicating right skew.
+
+Accommodation types may attract different weekday and weekend travellers, motivating \var{day_type} \(\times\) \var{room_type} to test whether their adjusted price contrasts differ. City-by-day-type and city-by-room-type interactions allow geographical variation. \var{city} and \var{day_type} follow filenames. \var{host_portfolio} combines \var{multi} and \var{biz}, preserving their categories.
+
+\begin{table}[!htbp]
+\centering
+\caption{Numerical summaries: mean (SD); minimum to maximum. Categories: percentages. No missing values; ratings approach their ceilings. High prices and ten bedrooms warrant checking.}
+\label{tab:variables}
+\small
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{\linewidth}{@{}p{0.50\linewidth}X@{}}
+\toprule
+\textbf{Variable} & \textbf{Summary} \\
+\midrule
+\var{realSum} (EUR; response) & 280.85 (328.84); 34.78 to 18,545.45 \\
+\var{person_capacity} (maximum guests) & 3.16 (1.30); 2 to 6 \\
+\var{bedrooms} (0 denotes studios) & 1.16 (0.63); 0 to 10 \\
+\var{cleanliness_rating} (0--10) & 9.39 (0.95); 2 to 10 \\
+\var{guest_satisfaction_overall} (0--100) & 92.65 (8.93); 20 to 100 \\
+\var{dist} (city centre; km) & 3.19 (2.39); 0.02 to 25.28 \\
+\var{metro_dist} (nearest metro; km) & 0.68 (0.86); \textless{}0.01 to 14.27 \\
+\var{attr_index_norm} (within-city attraction accessibility; 0--100) & 13.43 (9.81); 0.93 to 100 \\
+\var{city} & Amsterdam 4.03\%; Athens 10.26\%; Barcelona 5.49\%; Berlin 4.70\%; Budapest 7.81\%; Lisbon 11.08\%; London 19.37\%; Paris 12.84\%; Rome 17.56\%; Vienna 6.86\% \\
+\var{day_type} & weekdays 49.32\%; weekends 50.68\% \\
+\var{room_type} & Private room 36.41\%; Entire home/apt 63.59\% \\
+\var{host_is_superhost} & Yes 25.69\%; no 74.31\% \\
+\var{host_portfolio} (offers) & Single offer 35.96\%; 2--4 29.20\%; 5+ 34.84\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
