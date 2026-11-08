@@ -1,10 +1,8 @@
 # Preliminary results
 
-OLS fitted 12 predictors and three interaction pairs (n = 51,341; R² = 0.261).
+OLS fitted 12 predictors (n=51,341). Evidence that adjusted weekend–weekday contrasts differ by room type is insufficient (95% CI −7.33 to 15.09; p=0.497).
 
-Evidence for a common entire-minus-private difference in adjusted weekend–weekday contrasts is insufficient (95% CI −7.33 to 15.09; p = 0.497).
-
-Table 2. All coefficients (SEs), EUR. References: Amsterdam, weekdays, private rooms, non-Superhosts, single offers. City rows include interaction adjustments.
+Table 2. All coefficients (SEs), EUR. References: Amsterdam, weekdays, private rooms, non-Superhosts, single offers.
 
 | Term / city | Estimate (SE) | City × weekend (SE) | City × entire (SE) |
 | --- | ---: | ---: | ---: |
@@ -32,15 +30,24 @@ Table 2. All coefficients (SEs), EUR. References: Amsterdam, weekdays, private r
 | Rome | −198.85 (12.07) | −23.31 (13.88) | −280.35 (14.10) |
 | Vienna | −142.72 (15.53) | −28.09 (15.80) | −277.50 (17.15) |
 
-Positive bedroom and attraction slopes agree directionally with Gyódi and Nawaro (2021a); the centre-distance interval spans zero.
+Bedroom and attraction slopes agree directionally with Gyódi and Nawaro (2021a).
 
-- **Linearity:** Central residual–fitted curvature suggests mean misspecification.
-- **Constant variance:** Rising scale-location values suggest heteroskedasticity.
+- **Linearity:** Residual curvature suggests mean misspecification.
+- **Variance:** Rising scale-location and wider entire-home residual boxes suggest unequal variance.
 - **Error normality:** Q-Q upper tails depart from the reference line.
-- **Independence:** Spatial proximity and possible repeated properties/hosts leave independence unverified; identifiers are unavailable.
+- **Independence:** Unverified; nearby or repeated listings/hosts may be dependent.
+- **Multicollinearity:** Full rank; correlated ratings (Figure 2) and indicator VIFs >5 warrant caution.
 
-Leverage and Cook panels flag possible influence. Some indicator VIFs exceed 5. Classical inference is provisional; no repairs were applied.
+Inference remains provisional; no repairs applied.
 
-![Residual diagnostic grid](../part1_regression/output/part1/figures/03_residual_diagnostics.png)
+![Course residual diagnostics](../part1_regression/output/part1/figures/06_course_residual_diagnostics.png)
 
-Figure 1. Residual diagnostics. Central panel zooms axes; orange curves summarize bins. Dashed lines mark screening thresholds.
+Figure 1. Residual diagnostics; left axes zoom central 99%.
+
+![Numerical predictor pairs](../part1_regression/output/part1/figures/08_numeric_predictor_pairs.png)
+
+Figure 2. Predictor pairs: smoothers below, Pearson correlations above.
+
+![Residual group boxplots](../part1_regression/output/part1/figures/07_residual_boxplots.png)
+
+Figure 3. Residual boxplots; outlier markers omitted.

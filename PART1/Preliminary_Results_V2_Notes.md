@@ -1,60 +1,58 @@
 # Preliminary results V2: editing and submission notes
 
-These notes are outside the submitted section. Use [Preliminary_Results_V2.md](Preliminary_Results_V2.md), including its coefficient table and full residual diagnostic grid, in the assembled proposal.
+These notes are outside the submitted section. Use [Preliminary_Results_V2.md](Preliminary_Results_V2.md), with its full coefficient table and all three figures, in the assembled proposal.
 
-## Current revision
+## Word-count rule and current count
 
-- Replaced the three-panel course figure with the existing six-panel [full residual diagnostic grid](../part1_regression/output/part1/figures/03_residual_diagnostics.png). It displays full-range residuals versus fitted values, a central zoom, a normal Q-Q plot, scale-location, residuals versus leverage, and Cook distances.
-- Kept all 41 coefficient estimates and classical SEs unchanged. Each fitted coefficient appears exactly once. The first 14 rows contain the intercept, non-city coefficients, and central interaction; each of the nine city rows contains a city main effect and two interaction adjustments. Blank cells are inapplicable.
-- Kept the central interaction CI, p-value, and insufficient-evidence conclusion. The point estimate remains visible in Table 2. The common entire-minus-private contrast is an adjusted association, not a causal or matched-property price change.
-- Kept four separate assumption assessments. Linearity, variance, and normality refer to corresponding patterns in Figure 1. Independence is unverified because nearby offers and possibly repeated properties or hosts may be dependent; no stable identifiers are available. The figure's file-order influence panel is not a time-series test or an independence test.
-- Restored visual evidence for outliers, leverage, and possible influence alongside the four assumptions. Screening flags do not establish data errors or justify deletion. No observations were deleted and no assumption corrections were applied.
-- Shortened fit statistics, numerical screening summaries, and VIF reporting to make room for the extra plot labels. Details remain in the reproducible analysis companion. Some reference-coded indicator VIFs exceed 5; these are ordinary model-matrix-column VIFs, not generalized VIFs for whole factors.
-- Omitted predictor pairs, adjusted-contrast graphics, and residual group boxplots from the submitted section because they add to information already addressed by the table and full diagnostic grid. These are not assumed exempt from the limit if added later. A spatial map can support discussion of observed patches, but the current independence statement does not claim such patches or a formal dependence test.
-- [Preliminary_Results_V1.md](Preliminary_Results_V1.md) and all existing tracked files are unchanged.
+- The user's clarification is authoritative for this revision: **numbers in the table do not count toward the word limit**. The earlier counts included the numerical coefficient entries and were overly restrictive under this rule.
+- Excluded: the 41 numerical estimates and 41 numerical SEs in Table 2, comprising 82 numerical entries. Their values remain visible and unchanged.
+- Included: table headings and textual row labels, all prose, the section heading, all four captions, and all visible figure words and numbers. As a conservative choice, the portfolio-category labels containing `2–4` and `5+` are also still charged.
+- Charged prose/table-label/caption words: **175**.
+- Figure 1 visible words and numerical ticks: **52**.
+- Figure 2 visible words, correlations, and numerical ticks: **112**.
+- Figure 3 visible words and numerical ticks: **49**.
+- Total chargeable words: **388**. Splitting compound terms, ranges, slashes, and equals signs gives **399**.
+- Only table numerical entries are exempted. Figure numbers/ticks/correlation values and numerical values in the prose or captions are still counted; no broader numeric exemption is assumed.
+- Markdown formatting, image URLs, and nonprinted image alternative text are not counted. These editing notes and the audit inventories below are not submitted prose. Recheck after final report assembly and any caption/label edits.
 
-## Word count
+## Current figure selection
 
-- Prose, heading, all table labels and numerical entries, and both captions: 274 words.
-- Visible text and numerical labels in the full diagnostic grid: 115 words.
-- Complete section: **389 words**.
-- Splitting compound terms, dashes, slashes, ranges, and equals signs gives **398 words**.
-- Markdown borders, formatting markers, and the image URL are not printed words. Image alternative text is not a second printed caption. These notes and the inventory below are outside the submitted section.
-- Recheck after final report assembly, especially if captions, figure numbers, or image labels change. The count does not rely on the rubric's 15-word tolerance.
+- Figure 1 is the requested [three course diagnostic panels](../part1_regression/output/part1/figures/06_course_residual_diagnostics.png): residuals versus fitted values, normal Q-Q, and scale-location. Only the first panel zooms axes; the Q-Q and scale-location panels retain full ranges.
+- Figure 2 is the requested [predictor-pairs plot](../part1_regression/output/part1/figures/08_numeric_predictor_pairs.png). Lower panels show smoothers; upper panels show Pearson correlations for the seven numerical predictors.
+- Figure 3 now includes the [group residual boxplots](../part1_regression/output/part1/figures/07_residual_boxplots.png). The table-number exemption makes room for this additional categorical variance evidence and for clearer explanations.
+- The six-panel figure and leverage/Cook discussion remain excluded from the submitted draft, as requested. No figures or analysis code were modified.
+- The boxplot figure omits individual outlier markers to show group spread; it does not exclude observations from the model. The caption makes the display choice explicit.
 
-## Reading the model table
+## Statistical interpretation
 
-- Numerical slopes are conditional EUR differences per unit increase, holding other predictors fixed. Factor coefficients compare the displayed level with its stated reference. Main effects involved in interactions apply at the interacting factors' reference levels.
-- The city interaction columns represent `city:day_typeweekends` and `city:room_typeEntire home/apt`. They are adjustments relative to Amsterdam, not complete city-specific contrasts. Those require coefficient sums and their covariance terms.
-- The central interaction uses weekend and entire-home indicators, so its sign is entire minus private for the weekend minus weekday contrast, assumed common across cities.
-- All classical SEs, CIs, and p-values remain provisional because mean misspecification, unequal variance, nonnormal tails, and possible dependence have not been repaired.
-- Positive size and attraction slopes are compared directionally with Gyódi and Nawaro (2021a). Their city-specific spatial models use log price; this pooled OLS uses raw EUR. The draft does not equate coefficient magnitudes or claim a formal difference between studies.
+- Four usual assumptions are assessed: curved residual means suggest mean misspecification; scale-location and wider entire-home residual boxes suggest unequal variance; upper Q-Q tails depart from the normal reference; independence remains unverified because nearby or repeated offers may be dependent.
+- The predictor-pairs plot concerns relationships among predictors. Predictors need not be mutually independent or pairwise linearly related. Curved predictor-predictor smoothers alone do not establish response mean misspecification or error dependence.
+- For the additional MLR collinearity condition, the complete design has rank 41/41, ruling out exact linear dependence. This does not rule out strong multicollinearity. Cleanliness and guest satisfaction have r = 0.713 (displayed as 0.71). Numeric VIFs range from 1.61 to 3.27, the central interaction VIF is 4.61, and some reference-coded indicator VIFs exceed the course's screen of 5. The prose acknowledges concerns without claiming all predictors are independent or all collinearity is resolved.
+- VIFs are ordinary model-matrix-column VIFs under reference coding, not generalized VIFs for whole factors. The figure cannot reveal all multivariable dependence, so the rank/VIF assessment accompanies it.
+- All 41 fitted coefficient estimates and classical SEs remain unchanged, with each coefficient appearing once. The first 14 rows show the intercept, non-city coefficients, and central interaction; each of the nine city rows shows a main effect and two interaction adjustments. Blank cells are inapplicable.
+- The primary interaction's CI has been restored in the prose: estimate EUR 3.88, SE 5.72, 95% CI [−7.33, 15.09], p = 0.497. It is the entire-minus-private difference in adjusted weekend-minus-weekday contrasts, assumed common across cities. Insufficient evidence does not establish equality or a causal effect.
+- The response is total advertised EUR price for two guests and two nights. Numerical slopes are conditional EUR changes per unit; categorical coefficients compare with the stated references. Interacting main effects apply at the other factors' reference levels. City interaction columns are adjustments relative to Amsterdam, not complete city-specific contrasts.
+- The comparison with Gyódi and Nawaro (2021a) is directional; their log-price spatial models and this pooled raw-price model do not support direct coefficient-magnitude comparisons.
+- Classical inference remains provisional. No assumption repairs, model changes, or additional data exclusions were applied.
 
-## Reproducibility and checks
+## Reproducibility and source preservation
 
-- Every one of the 41 coefficient estimates and SEs was checked against [coefficients.csv](../part1_regression/output/part1/tables/coefficients.csv); no terms are missing or duplicated. The table is unchanged from the previous V2.
-- Figure 1 was visually inspected; its full-range panels retain all offers and extremes. The central panel only changes axis ranges, not the fit or sample.
-- [part1_model.Rmd](../part1_regression/analysis/part1_model.Rmd) generates the included full grid. Its later course-diagnostics section also sources [course_diagnostics.R](../part1_regression/analysis/course_diagnostics.R), so that helper must accompany the Rmd if the current code structure is submitted.
-- No model or data files were changed, and no regression was refitted for this revision.
-- Keep Table 2 / Figure 1 numbering and the 2021a suffix consistent with the final report. Supporting source links remain in chat.
-- The original supplementary diagnostics file still links to an old draft filename. It was left unchanged; its plots are analysis material, not part of the current submitted section.
+- The coefficient table is identical to the preceding V2 and was previously checked against [coefficients.csv](../part1_regression/output/part1/tables/coefficients.csv), including all 41 terms. The restored CI and p-value were checked against [primary_interaction.csv](../part1_regression/output/part1/tables/primary_interaction.csv).
+- The plot inventories below were checked against the actual figures. All 21 correlations in Figure 2 were previously checked against the exported correlation matrix, and the wider entire-home residual IQR was independently verified from the saved fit's model matrix.
+- [Preliminary_Results_V1.md](Preliminary_Results_V1.md) remains unchanged. No data, model, Rmd, helper, or image files were edited or refitted.
+- [part1_model.Rmd](../part1_regression/analysis/part1_model.Rmd) sources [course_diagnostics.R](../part1_regression/analysis/course_diagnostics.R), which generates the three selected figures. Include the helper at its expected location when submitting this code structure.
+- Keep Table 2 / Figures 1–3 numbering and the 2021a suffix consistent with the final report. Preserve figure readability in the exported proposal.
 
-## Visible figure text inventory (audit only)
+## Figure 1 visible text inventory (audit only)
 
-Residuals vs fitted: all offers
+Residuals vs fitted (zoom)
 Fitted price (EUR)
 Residual (EUR)
-0 500 1000 1500
-0 5000 10000 15000
-
-Central 99% axis ranges (zoom)
-Fitted price (EUR)
-Residual (EUR)
-0 200 400 600 800
+200 400 600 800
 -200 0 200 400 600 800
 
-Normal Q-Q: all offers
-Theoretical Quantiles
+Normal Q-Q
+Theoretical quantile
 Standardized residual
 -4 -2 0 2 4
 0 10 20 30 40 50 60
@@ -65,16 +63,53 @@ sqrt(|standardized residual|)
 0 500 1000 1500
 0 2 4 6 8
 
-Residuals vs leverage
-Leverage
-Standardized residual
-0.002 0.004 0.006
-0 10 20 30 40 50 60
-24148
+## Figure 2 visible text inventory (audit only)
 
-Influence: all offers
-Analytical row (file order; not time)
-Cook distance
-0 10000 20000 30000 40000 50000
-0.00 0.02 0.04 0.06 0.08 0.10
-24148
+Capacity
+Bedrooms
+Cleanliness
+Guest satisfaction
+Centre distance
+Metro distance
+Attraction index
+
+0.56 0.01 0.01 -0.13 -0.04 -0.05
+0.03 0.05 -0.01 0.04 -0.06
+0.71 -0.03 0.01 -0.08
+0.00 0.03 -0.08
+0.56 -0.24
+-0.22
+
+0 2 4 6 8 10
+20 40 60 80 100
+0 2 4 6 8 10 14
+
+2 3 4 5 6
+2 4 6 8 10
+0 5 10 15 20 25
+0 20 40 60 80 100
+
+0 2 4 6 8 10
+20 40 60 80 100
+0 2 4 6 8 10 14
+
+2 3 4 5 6
+2 4 6 8 10
+0 5 10 15 20 25
+0 20 40 60 80 100
+
+## Figure 3 visible text inventory (audit only)
+
+City
+Room
+Day by room
+Standardized residual
+Standardized residual
+Standardized residual
+-1.5 -1.0 -0.5 0.0 0.5 1.0
+-1.5 -1.0 -0.5 0.0 0.5 1.0
+-1.5 -1.0 -0.5 0.0 0.5 1.0
+Ams Ath Bar Ber Bud Lis Lon Par Rom Vie
+Private Entire
+Weekday Weekend Weekday Weekend
+Private Private Entire Entire
