@@ -30,15 +30,15 @@ Table 2. All coefficients (SEs), EUR. References: Amsterdam, weekdays, private r
 | Rome | −198.85 (12.07) | −23.31 (13.88) | −280.35 (14.10) |
 | Vienna | −142.72 (15.53) | −28.09 (15.80) | −277.50 (17.15) |
 
-Bedroom and attraction slopes agree directionally with Gyódi and Nawaro (2021a).
+The €81.00 bedroom slope and positive attraction association agree directionally with Gyódi and Nawaro (2021a). However, centre distance is inconclusive (p=0.702); differing controls may contribute.
 
 - **Linearity:** Residual curvature suggests mean misspecification.
 - **Variance:** Rising scale-location suggests unequal variance.
 - **Error normality:** Q-Q upper tails depart from the reference line.
 - **Independence:** Unverified; nearby or repeated listings/hosts may be dependent.
-- **Conditional mean response:** Figure 3 shows an increasing response trend; dependence on one linear combination remains unverified.
-- **Conditional mean predictors:** Curved attraction–distance trends (Figure 2) suggest nonlinearity, limiting residual interpretation.
-- **Multicollinearity:** Full rank excludes exact collinearity; some indicator VIFs >5 warrant caution.
+- **Conditional mean response:** Figure 3 suggests one increasing trend; the condition remains unverified.
+- **Conditional mean predictors:** Curved attraction–distance trends (Figure 2) question conditional predictor linearity.
+- **Multicollinearity:** Full rank; some indicator VIFs >5 warrant caution.
 
 Inference remains provisional; no repairs applied.
 
@@ -52,4 +52,4 @@ Figure 2. Predictor pairs: smoothers below, Pearson correlations above.
 
 ![Response versus fitted prices](../part1_regression/output/part1/figures/09_conditional_mean_response.png)
 
-Figure 3. Response versus fitted: central 99% ranges; line joins bin means.
+Figure 3. Response versus fitted: central 99%; binned means.

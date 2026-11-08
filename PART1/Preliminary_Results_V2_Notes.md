@@ -25,14 +25,16 @@ The user confirmed the additional diagnostic conditions as **conditional mean re
 - Every one of the 41 coefficient estimates and classical SEs is retained unchanged, each exactly once. The first 14 rows contain the intercept, non-city coefficients, and central interaction; nine city rows each contain three coefficients. City interaction entries adjust Amsterdam's contrasts. Blank cells are inapplicable.
 - The focal interaction is EUR 3.88 (SE 5.72), 95% CI [−7.33, 15.09], p = 0.497. It is the entire-minus-private difference between adjusted weekend-minus-weekday contrasts, assumed common across cities. Insufficient evidence is not proof of equality or a causal effect.
 - The response unit is total advertised EUR price for two guests and two nights. Numerical coefficients are conditional per-unit EUR differences; factor coefficients compare with the caption's references. Main effects involved in interactions apply at the other factors' reference levels.
-- Comparison with Gyódi and Nawaro (2021a) is directional. Their log-price spatial models do not support direct magnitude comparisons with this pooled raw-EUR model.
+- The expanded results discussion gives the conditional bedroom slope (EUR 81.00 per additional bedroom, holding other included variables fixed), positive attraction association, and agreement in direction with Gyódi and Nawaro (2021a). It also reports the inconclusive city-centre-distance coefficient (estimate −0.36 EUR/km; classical p = 0.702). The original study reported a significant distance association in six cities, mostly negative, and found attraction indices more robust. This is a qualified comparison, not proof that coefficients differ across studies. Different controls and pooled versus city-specific spatial specifications may contribute; the draft does not establish that explanation.
+- Their log-price model and this raw-EUR model use different scales, so no direct magnitude comparison is made. The reported EUR 81.00 is an adjusted association, not a causal price effect. Main inference remains provisional because the diagnosed assumptions have not been repaired.
+- Some diagnostic wording and Figure 3's caption were shortened to make room for interpretation. All four usual assumptions, the two confirmed conditional-mean conditions, the VIF assessment, all 41 estimates, and all three figures remain.
 
 ## Word count
 
 - Numerical table entries do not count, as clarified by the user. Excluded: the 41 estimates and 41 SEs, **82 numerical entries**. Textual table labels, headings, and captions are counted; the numerical portfolio-category labels are conservatively still charged.
-- Prose, heading, textual table content, and all four captions: **204** words.
+- Prose, heading, textual table content, and all four captions: **207** words.
 - Figure 1 text and ticks: **52**; Figure 2 text, correlations, and ticks: **112**; Figure 3 text and ticks: **17**.
-- Complete chargeable section: **385 words**. Splitting compounds, ranges, slashes, and equals signs gives **396 words**.
+- Complete chargeable section: **388 words**. Splitting compounds, ranges, slashes, and equals signs gives **400 words**.
 - All figure numbers and values are counted; the table-only exemption is not extended to figures or prose. Markdown formatting, image paths, and nonprinted alternative text are not additional printed words. These notes and the inventories below are not part of the submitted section.
 - Recheck after report assembly, resizing that changes labels, or caption/numbering edits. Both counts are within 400 without relying on the 15-word tolerance.
 
