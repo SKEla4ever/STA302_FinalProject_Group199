@@ -35,4 +35,4 @@ Categories: percentages. No missing values; ratings approach their ceilings. Hig
 - Collection protocol: original article, Section 3.1; 2019 dates and original filtering: Appendix A, Tables A.1–A.2. Supporting source links remain in chat, outside the draft. Keep the 2021a/2021b bibliography suffixes consistent with the full report.
 - Variable labels use the actual model column names. `city` and `day_type` are derived from filenames; `host_portfolio` is derived from the original `multi` and `biz` indicators.
 - The interaction rationale is a substantive hypothesis about differing traveller demand, not an observed demand finding. No extra graph is required by the instructor clarification supplied in chat.
-- No data or model changes were made.
+- No data or model changes were made
